@@ -1,0 +1,24 @@
+{
+    "os": "Linux-4.15.0-171-generic-x86_64-with-glibc2.17",
+    "python": "3.8.12",
+    "heartbeatAt": "2022-03-22T06:40:51.914566",
+    "startedAt": "2022-03-22T06:40:47.969195",
+    "docker": null,
+    "gpu": "NVIDIA GeForce RTX 3080 Ti",
+    "gpu_count": 4,
+    "cpu_count": 48,
+    "cuda": null,
+    "args": [],
+    "state": "running",
+    "program": "multi_epoch/multi-epoch.py",
+    "codePath": "multi_epoch/multi-epoch.py",
+    "git": {
+        "remote": "https://github.com/sleep-staging/multi.git",
+        "commit": "2a1e611c5ea66f6620c8a8627e09e350ef2d3b32"
+    },
+    "email": "vamsi81523@gmail.com",
+    "root": "/home/vamsi81523/multi",
+    "host": "gnode093",
+    "username": "vamsi81523",
+    "executable": "/home/vamsi81523/miniconda3/envs/torch/bin/python"
+}

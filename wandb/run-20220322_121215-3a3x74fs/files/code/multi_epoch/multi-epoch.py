@@ -25,7 +25,7 @@ n_epochs = 200
 NUM_WORKERS = 5
 N_DIM = 256
 EPOCH_LEN = 7
-TEMPERATURE = 1
+TEMPERATURE = 8
 
 ####################################################################################################
 
@@ -134,7 +134,7 @@ wb = wandb.init(
         notes="single-epoch, symmetric loss, 1000 samples, using same projection heads and no batch norm, original simclr",
         save_code=True,
         entity="sleep-staging",
-        name="multi-epoch, T=1",
+        name="multi-epoch, T=8",
     )
 wb.save('multi/multi_epoch/*.py')
 wb.watch([q_encoder],log='all',log_freq=500)
