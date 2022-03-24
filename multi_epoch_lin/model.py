@@ -2,7 +2,7 @@ from torch import nn
 from resnet1d import BaseNet
 import torch
 
-def sleep_model(n_channels, input_size_samples, n_dim = 256):
+def sleep_model(n_channels, input_size_samples, n_dim = 256, epoch_len = 7):
     class attention(nn.Module):
         
         def __init__(self, n_dim):
@@ -60,4 +60,29 @@ def sleep_model(n_channels, input_size_samples, n_dim = 256):
             else:
                 raise Exception("Fix the projection heads")
             
-    return Net(n_channels, n_dim)
+    class final_model(nn.Module):
+        
+        def __init__(self, n_channels, n_dim, epoch_len):
+            super(final_model,self).__init__()
+            
+            self.epoch_len = epoch_len
+            self.net = Net(n_channels, n_dim)
+            self.linear_list = nn.ModuleList()
+            for i in range(self.epoch_len):
+                self.linear_list.append(nn.Linear(n_dim // 2, n_dim // 2, bias=True))
+        
+        def forward(self, anc, pos, proj = 'top'):
+            if proj == 'top':
+                anc = self.net(anc, proj = proj)
+                pos_features = []
+                for i in range(self.epoch_len):
+                    pos_features.append(self.linear_list[i](self.net(pos[:, i], proj= proj)))
+                pos_features = torch.stack(pos_features, dim=1)
+                
+                return anc, pos_features
+            elif proj == 'mid':
+                return self.net(anc)
+            else:
+                raise Exception("Fix the projection heads")
+            
+    return final_model(n_channels, n_dim, epoch_len)

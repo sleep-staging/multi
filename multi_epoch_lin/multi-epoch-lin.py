@@ -17,7 +17,7 @@ from torch.utils.data import DataLoader, Dataset
 PATH = '/scratch/sleepkfold_allsamples/'
 
 # Params
-SAVE_PATH = "multi-epoch-avg.pth"
+SAVE_PATH = "multi-epoch-lin.pth"
 WEIGHT_DECAY = 1e-4
 BATCH_SIZE = 128
 lr = 5e-4
@@ -25,7 +25,7 @@ n_epochs = 200
 NUM_WORKERS = 5
 N_DIM = 256
 EPOCH_LEN = 7
-TEMPERATURE = 8
+TEMPERATURE = 1
 
 ####################################################################################################
 
@@ -48,7 +48,7 @@ set_random_seeds(seed=random_state, cuda=device == "cuda")
 
 # Extract number of channels and time steps from dataset
 n_channels, input_size_samples = (2, 3000)
-model = sleep_model(n_channels, input_size_samples, n_dim = N_DIM)
+model = sleep_model(n_channels, input_size_samples, n_dim = N_DIM, epoch_len = EPOCH_LEN)
 
 q_encoder = model.to(device)
 
@@ -134,7 +134,7 @@ wb = wandb.init(
         notes="single-epoch, symmetric loss, 1000 samples, using same projection heads and no batch norm, original simclr",
         save_code=True,
         entity="sleep-staging",
-        name="multi-epoch-avg, T=8",
+        name="multi-epoch-lin, T=1",
     )
 wb.save('multi/multi_epoch_avg/*.py')
 wb.watch([q_encoder],log='all',log_freq=500)

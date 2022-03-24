@@ -29,7 +29,7 @@ def evaluate(q_encoder, train_loader, test_loader, device):
             X_val = X_val.float()
             y_val = y_val.long()
             X_val = X_val.to(device)
-            emb_val.extend(q_encoder(X_val, proj='mid').cpu().tolist())
+            emb_val.extend(q_encoder(X_val, _, proj='mid').cpu().tolist())
             gt_val.extend(y_val.numpy().flatten())
     emb_val, gt_val = np.array(emb_val), np.array(gt_val)
 
@@ -40,7 +40,7 @@ def evaluate(q_encoder, train_loader, test_loader, device):
             X_test = X_test.float()
             y_test = y_test.long()
             X_test = X_test.to(device)
-            emb_test.extend(q_encoder(X_test, proj='mid').cpu().tolist())
+            emb_test.extend(q_encoder(X_test, _, proj='mid').cpu().tolist())
             gt_test.extend(y_test.numpy().flatten())
 
     emb_test, gt_test = np.array(emb_test), np.array(gt_test)
@@ -177,13 +177,8 @@ def Pretext(
             )  # (B, 7, 2, 3000)  (B, 7, 2, 3000) 
             
             num_len = anc.shape[1]
-            pos_features = []
         
-            anc_features = q_encoder(anc[:, num_len // 2], proj='top') #(B, 128)
-            for i in range(num_len):
-                pos_features.append(q_encoder(pos[:, i], proj='top'))  # (B, 128)
-                
-            pos_features = torch.stack(pos_features, dim=1)  # (B, 7, 128)
+            anc_features, pos_features = q_encoder(anc[:, num_len // 2], pos, proj='top')           
                        
             # backprop
             loss = criterion(anc_features, pos_features)
