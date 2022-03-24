@@ -12,7 +12,8 @@ from sklearn.model_selection import KFold
 from tqdm import tqdm
 import numpy as np
 from torch.utils.data import DataLoader, Dataset
-from torch.utils.checkpoint import checkpoint, checkpoint_sequential
+
+
 
 # Train, test
 def evaluate(q_encoder, train_loader, test_loader, device):
@@ -167,8 +168,8 @@ def Pretext(
         ):
             q_encoder.train()
             
-            anc = anc[:,:5].float()
-            pos = pos[:,:5].float()
+            anc = anc.float()
+            pos = pos.float()
             
             anc, pos = (
                 anc.to(device),
@@ -177,34 +178,23 @@ def Pretext(
             
             num_len = anc.shape[1]
             pos_features = []
-            
+        
             anc_features = q_encoder(anc[:, num_len // 2], proj='top') #(B, 128)
             for i in range(num_len):
-                pos_features.append(q_encoder(pos[:, i], proj='top'))  # (B, 128) 
+                pos_features.append(q_encoder(pos[:, i], proj='top'))  # (B, 128)
                 
             pos_features = torch.stack(pos_features, dim=1)  # (B, 7, 128)
-            
+                       
+            # backprop
+            loss = criterion(anc_features, pos_features)
+
+            # loss back
+            all_loss.append(loss.item())
+            pretext_loss.append(loss.cpu().detach().item())
+
             optimizer.zero_grad()
-            # backprop
-            loss1 = criterion(anc_features, pos_features)  
-            loss1.backward()
-#             torch.cuda.empty_cache()
-
-            anc_features = []
-            pos_features = q_encoder(pos[:, num_len // 2], proj='top') #(B, 128)
-            for i in range(num_len):
-                anc_features.append(q_encoder(anc[:, i], proj='top'))  # (B, 128) 
-                
-            anc_features = torch.stack(anc_features, dim=1)  # (B, 7, 128)
-                                  
-            # backprop
-            loss2 = criterion(pos_features,anc_features)
-            loss2.backward()
-            
+            loss.backward()
             optimizer.step()  # only update encoder_q
-
-            all_loss.append(loss1.item()+loss2.item())
-            pretext_loss.append(loss1.cpu().detach().item()+loss2.cpu().detach().item())
 
             N = 1000
             if (step + 1) % N == 0:
@@ -215,7 +205,7 @@ def Pretext(
 
         wandb.log({"ssl_loss": np.mean(pretext_loss), "Epoch": epoch})
 
-        if epoch >= 10 and (epoch) % 5 == 0:
+        if epoch >= 40 and (epoch) % 5 == 0:
 
             test_acc, test_f1, test_kappa, bal_acc = kfold_evaluate(
                 q_encoder, test_subjects, device, BATCH_SIZE

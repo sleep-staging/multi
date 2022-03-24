@@ -1,7 +1,7 @@
 from augmentations import *
 from loss import loss_fn
 from model import sleep_model
-from train_old import *
+from train import *
 from utils import *
 
 from braindecode.util import set_random_seeds
@@ -17,15 +17,15 @@ from torch.utils.data import DataLoader, Dataset
 PATH = '/scratch/sleepkfold_allsamples/'
 
 # Params
-SAVE_PATH = "multi-epoch-final.pth"
+SAVE_PATH = "multi-epoch-avg.pth"
 WEIGHT_DECAY = 1e-4
 BATCH_SIZE = 128
 lr = 5e-4
 n_epochs = 200
 NUM_WORKERS = 5
 N_DIM = 256
-EPOCH_LEN = 5
-TEMPERATURE = 1
+EPOCH_LEN = 7
+TEMPERATURE = 8
 
 ####################################################################################################
 
@@ -79,6 +79,7 @@ class pretext_data(Dataset):
         for i in range(pos.shape[0]):
             pos[i] = augment(pos[i])
             anc[i] = augment(anc[i])
+       
         return anc, pos
     
 class train_data(Dataset):
@@ -133,9 +134,9 @@ wb = wandb.init(
         notes="single-epoch, symmetric loss, 1000 samples, using same projection heads and no batch norm, original simclr",
         save_code=True,
         entity="sleep-staging",
-        name="sym, new, grad_acc w/ anc, T=1",
+        name="multi-epoch-avg, T=8",
     )
-wb.save('multi/multi_epoch/*.py')
+wb.save('multi/multi_epoch_avg/*.py')
 wb.watch([q_encoder],log='all',log_freq=500)
 
 Pretext(q_encoder, optimizer, n_epochs, criterion, pretext_loader, test_subjects, wb, device, SAVE_PATH, BATCH_SIZE)

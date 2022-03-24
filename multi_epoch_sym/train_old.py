@@ -12,7 +12,8 @@ from sklearn.model_selection import KFold
 from tqdm import tqdm
 import numpy as np
 from torch.utils.data import DataLoader, Dataset
-from torch.utils.checkpoint import checkpoint, checkpoint_sequential
+
+
 
 # Train, test
 def evaluate(q_encoder, train_loader, test_loader, device):
@@ -169,42 +170,35 @@ def Pretext(
             
             anc = anc[:,:5].float()
             pos = pos[:,:5].float()
-            
+        
             anc, pos = (
                 anc.to(device),
                 pos.to(device)
             )  # (B, 7, 2, 3000)  (B, 7, 2, 3000) 
             
             num_len = anc.shape[1]
-            pos_features = []
-            
-            anc_features = q_encoder(anc[:, num_len // 2], proj='top') #(B, 128)
-            for i in range(num_len):
-                pos_features.append(q_encoder(pos[:, i], proj='top'))  # (B, 128) 
-                
-            pos_features = torch.stack(pos_features, dim=1)  # (B, 7, 128)
-            
-            optimizer.zero_grad()
-            # backprop
-            loss1 = criterion(anc_features, pos_features)  
-            loss1.backward()
-#             torch.cuda.empty_cache()
-
             anc_features = []
-            pos_features = q_encoder(pos[:, num_len // 2], proj='top') #(B, 128)
+            pos_features = []
+        
             for i in range(num_len):
-                anc_features.append(q_encoder(anc[:, i], proj='top'))  # (B, 128) 
-                
-            anc_features = torch.stack(anc_features, dim=1)  # (B, 7, 128)
-                                  
-            # backprop
-            loss2 = criterion(pos_features,anc_features)
-            loss2.backward()
+                anc_features.append(q_encoder(anc[:, i], proj='top')) #(B, 128)
+                pos_features.append(q_encoder(pos[:, i], proj='top'))  # (B, 128)
             
-            optimizer.step()  # only update encoder_q
+            anc_features = torch.stack(anc_features, dim=1)  # (B, 7, 128)
+            pos_features = torch.stack(pos_features, dim=1)  # (B, 7, 128)
+                       
+             # backprop
+            loss1 = criterion(anc_features[:, num_len // 2], pos_features)
+            loss2 = criterion(pos_features[:, num_len // 2], anc_features)
+            loss = (loss1 + loss2) / 2
 
-            all_loss.append(loss1.item()+loss2.item())
-            pretext_loss.append(loss1.cpu().detach().item()+loss2.cpu().detach().item())
+            # loss back
+            all_loss.append(loss.item())
+            pretext_loss.append(loss.cpu().detach().item())
+
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()  # only update encoder_q
 
             N = 1000
             if (step + 1) % N == 0:
