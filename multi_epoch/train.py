@@ -186,7 +186,7 @@ def Pretext(
             pos_features = torch.stack(pos_features, dim=1)  # (B, 7, 128)
                        
             # backprop
-            loss = criterion(anc_features, pos_features)
+            loss1 = criterion(anc_features, pos_features)
 
             # loss back
             all_loss.append(loss.item())

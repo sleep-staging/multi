@@ -43,7 +43,7 @@ class BasicBlock_Bottle(nn.Module):
         out = self.bn3(out)
 
         if self.downsample is not None:
-            residual = self.downsample(x)
+            residual =  checkpoint(self.downsample, x, preserve_rng_state = True, use_reentrant=False)
 
         out += residual
         out = self.relu(out)
@@ -92,8 +92,8 @@ class BaseNet(nn.Module):
     def forward(self, x0):
         x0 = self.conv1(x0)
         x0 = self.bn1(x0)
-        x0 = self.relu(x0)
-        x0 = self.maxpool(x0)
+        x0 = checkpoint(self.relu, x0, preserve_rng_state = True, use_reentrant=False)
+        x0 = checkpoint(self.maxpool, x0, preserve_rng_state = True, use_reentrant=False)
 
         x = self.layer3x3_1(x0)
         x = self.layer3x3_2(x)

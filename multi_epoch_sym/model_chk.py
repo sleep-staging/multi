@@ -1,5 +1,5 @@
 from torch import nn
-from torch.utils.checkpoint import checkpoint
+from torch.utils.checkpoint import checkpoint, checkpoint_sequential
 from resnet1d_chk import BaseNet
 import torch
 
@@ -33,7 +33,7 @@ def sleep_model(n_channels, input_size_samples, n_dim = 256):
             
         def forward(self, x): 
             x = self.model(x)
-            x = self.attention(x)
+            x = checkpoint(self.attention, x, preserve_rng_state = True, use_reentrant=False)
             return x
         
     class Net(nn.Module):
@@ -54,7 +54,7 @@ def sleep_model(n_channels, input_size_samples, n_dim = 256):
             x = self.enc(x)
             
             if proj == 'top':
-                x = checkpoint(self.p1, x, preserve_rng_state = True, use_reentrant=False)
+                x = checkpoint_sequential(self.p1, 2, x)
                 return x
             elif proj == 'mid':
                 return x

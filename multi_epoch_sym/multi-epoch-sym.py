@@ -1,6 +1,6 @@
 from augmentations import *
 from loss import loss_fn
-from model_chk import sleep_model
+from model import sleep_model
 from train import *
 from utils import *
 
