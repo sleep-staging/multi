@@ -1,5 +1,6 @@
 from torch import nn
 from resnet1d import BaseNet
+from tfr import Transformer
 import torch
 
 def sleep_model(n_channels, input_size_samples, n_dim = 256):
@@ -42,22 +43,54 @@ def sleep_model(n_channels, input_size_samples, n_dim = 256):
             self.enc = encoder(n_channels, n_dim)
             self.n_dim = n_dim
             
-            self.p1 = nn.Sequential(
+            self.proj = nn.Sequential(
                 nn.Linear(self.n_dim, self.n_dim // 2, bias=True),
-                # nn.BatchNorm1d(self.n_dim // 2),
+                nn.ReLU(inplace=True),
+                nn.Linear(self.n_dim // 2, self.n_dim // 2, bias=True),
+            )
+            
+            self.pred = nn.Sequential(
+                nn.Linear(self.n_dim // 2, self.n_dim // 2, bias=True),
+                nn.ReLU(inplace=True),
+                nn.Linear(self.n_dim // 2, self.n_dim // 2, bias=True),
+            )
+            
+            self.tfr = Transformer(256, 4, 4, 256, dropout=0.1)
+            
+            self.tfr_proj = nn.Sequential(
+                nn.Linear(self.n_dim, self.n_dim // 2, bias=True),
+                nn.ReLU(inplace=True),
+                nn.Linear(self.n_dim // 2, self.n_dim // 2, bias=True),
+            )
+            
+            self.tfr_pred = nn.Sequential(
+                nn.Linear(self.n_dim // 2, self.n_dim // 2, bias=True),
                 nn.ReLU(inplace=True),
                 nn.Linear(self.n_dim // 2, self.n_dim // 2, bias=True),
             )
            
-        def forward(self, x, proj='mid'):
-            x = self.enc(x)
+        def forward(self, x, proj='mid'): # B, 7, 1, 3000
             
-            if proj == 'top':
-                x = self.p1(x)
-                return x
-            elif proj == 'mid':
-                return x
+            if proj=='mid':
+                assert len(x.shape) == 3, 'Send a single epoch'
+                return x # B,256
+        
+            epoch_len = x.shape[1] # 7          
+            temp = []
+            
+            for i in range(epoch_len):
+                temp.append(self.enc(x[:,i,:,:]))
+            x = torch.stack(temp, dim=1) # B, 7, 256
+            del temp    
+       
+            if proj=='proj':
+                tfr_x = self.tfr(x)
+                return self.proj(x[:, epoch_len//2, :]), self.tfr_proj(tfr_x)
+            
+            elif proj=='pred':
+                tfr_x = self.tfr(x)
+                return self.pred(self.proj(x[:, epoch_len//2, :])), self.tfr_pred(self.tfr_proj(tfr_x))
             else:
-                raise Exception("Fix the projection heads")
-            
+                assert False, 'proj must be mid, proj or pred'
+                         
     return Net(n_channels, n_dim)

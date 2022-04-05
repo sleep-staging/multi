@@ -12,7 +12,8 @@ from sklearn.model_selection import KFold
 from tqdm import tqdm
 import numpy as np
 from torch.utils.data import DataLoader, Dataset
-from torch.utils.checkpoint import checkpoint, checkpoint_sequential
+
+
 
 # Train, test
 def evaluate(q_encoder, train_loader, test_loader, device):
@@ -83,8 +84,8 @@ def kfold_evaluate(q_encoder, test_subjects, device, BATCH_SIZE):
         test_subjects_train = [rec for sub in test_subjects_train for rec in sub]
         test_subjects_test = [rec for sub in test_subjects_test for rec in sub]
 
-        train_loader = DataLoader(TuneDataset(test_subjects_train), batch_size=BATCH_SIZE, shuffle=True, num_workers=2, persistent_workers=True)
-        test_loader = DataLoader(TuneDataset(test_subjects_test), batch_size=BATCH_SIZE, shuffle= False, num_workers=2, persistent_workers=True)
+        train_loader = DataLoader(TuneDataset(test_subjects_train), batch_size=BATCH_SIZE, shuffle=True, num_workers=4, persistent_workers=True)
+        test_loader = DataLoader(TuneDataset(test_subjects_test), batch_size=BATCH_SIZE, shuffle= False, num_workers=4, persistent_workers=True)
         test_acc, _, test_f1, test_kappa, bal_acc, gt, pd = evaluate(q_encoder, train_loader, test_loader, device)
 
         total_acc.append(test_acc)
@@ -135,6 +136,9 @@ class TuneDataset(Dataset):
 # Pretrain
 def Pretext(
     q_encoder,
+    k_encoder,
+    m,
+    lambda1,
     optimizer,
     Epoch,
     criterion,
@@ -165,46 +169,33 @@ def Pretext(
         for index, (anc, pos) in enumerate(
             tqdm(pretext_loader, desc="pretrain")
         ):
-            q_encoder.train()
+            q_encoder.train(); k_encoder.train() # for dropout
             
             anc = anc[:,:5].float()
             pos = pos[:,:5].float()
-            
+        
             anc, pos = (
                 anc.to(device),
                 pos.to(device)
-            )  # (B, 7, 2, 3000)  (B, 7, 2, 3000) 
-            
-            num_len = anc.shape[1]
-            pos_features = []
-            
-            anc_features = q_encoder(anc[:, num_len // 2], proj='top') #(B, 128)
-            for i in range(num_len):
-                pos_features.append(q_encoder(pos[:, i], proj='top'))  # (B, 128) 
-                
-            pos_features = torch.stack(pos_features, dim=1)  # (B, 7, 128)
-            
+            )  # (B, 7, 2, 3000)  (B, 7, 2, 3000)     
+        
+            top_res, top_tfr = q_encoder(anc, proj='pred')
+            bot_res, bot_tfr = k_encoder(pos, proj='proj')
+             
+             # backprop
+            loss = (criterion(top_res, top_tfr) + criterion(bot_res, bot_tfr)) + lambda1((top_res, bot_tfr) + (bot_res, top_tfr))
+
+            # loss back
+            all_loss.append(loss.item())
+            pretext_loss.append(loss.cpu().detach().item())
+
             optimizer.zero_grad()
-            # backprop
-            loss1 = criterion(anc_features, pos_features)  
-            loss1.backward()
-#             torch.cuda.empty_cache()
-
-            anc_features = []
-            pos_features = q_encoder(pos[:, num_len // 2], proj='top') #(B, 128)
-            for i in range(num_len):
-                anc_features.append(q_encoder(anc[:, i], proj='top'))  # (B, 128) 
-                
-            anc_features = torch.stack(anc_features, dim=1)  # (B, 7, 128)
-                                  
-            # backprop
-            loss2 = criterion(pos_features,anc_features)
-            loss2.backward()
-            
+            loss.backward()
             optimizer.step()  # only update encoder_q
-
-            all_loss.append(loss1.item()+loss2.item())
-            pretext_loss.append(loss1.cpu().detach().item()+loss2.cpu().detach().item())
+            
+            # exponential moving average (EMA)
+            for param_q, param_k in zip(q_encoder.parameters(), k_encoder.parameters()):
+                param_k.data = param_k.data * m + param_q.data * (1. - m) 
 
             N = 1000
             if (step + 1) % N == 0:
@@ -215,7 +206,7 @@ def Pretext(
 
         wandb.log({"ssl_loss": np.mean(pretext_loss), "Epoch": epoch})
 
-        if epoch >= 10 and (epoch) % 5 == 0:
+        if epoch >= 40 and (epoch) % 5 == 0:
 
             test_acc, test_f1, test_kappa, bal_acc = kfold_evaluate(
                 q_encoder, test_subjects, device, BATCH_SIZE

@@ -1,18 +1,17 @@
 from augmentations import *
 from loss import loss_fn
 from model import sleep_model
-from train_old import *
+from train import *
 from utils import *
 
 from braindecode.util import set_random_seeds
 
 import os
 import numpy as np
-import copy
+import copy 
 import wandb
 import torch
 from torch.utils.data import DataLoader, Dataset
-from tfr import Transformer
 
 
 PATH = '/scratch/sleepkfold_allsamples/'
@@ -25,8 +24,10 @@ lr = 5e-4
 n_epochs = 200
 NUM_WORKERS = 5
 N_DIM = 256
-EPOCH_LEN = 5
+EPOCH_LEN = 7
 TEMPERATURE = 1
+m = 0.9995
+LAMBDA = 1
 
 ####################################################################################################
 
@@ -49,15 +50,15 @@ set_random_seeds(seed=random_state, cuda=device == "cuda")
 
 # Extract number of channels and time steps from dataset
 n_channels, input_size_samples = (2, 3000)
-model = sleep_model(n_channels, input_size_samples, n_dim = N_DIM)
-tfr_model = Transformer(dim=128,depth=4,heads=4,mlp_dim=128,dropout=0.3)
-tfr_model = tfr_model.to(device)
+q_encoder = sleep_model(n_channels, input_size_samples, n_dim = N_DIM).to(device)
+k_encoder = sleep_model(n_channels, input_size_samples, n_dim = N_DIM).to(device)
 
-q_encoder = model.to(device)
-
+for param_q, param_k in zip(q_encoder.parameters(), k_encoder.parameters()):
+    param_k.data.copy_(param_q.data) 
+    param_k.requires_grad = False  # not update by gradient
 
 optimizer = torch.optim.Adam(q_encoder.parameters(), lr=lr, weight_decay=WEIGHT_DECAY)
-criterion = loss_fn(device,T=TEMPERATURE).to(device)
+criterion = loss_fn(device).to(device)
 
 #####################################################################################################
 
@@ -139,9 +140,9 @@ wb = wandb.init(
         entity="sleep-staging",
         name="sym, new, grad_acc w/ anc, T=1",
     )
-wb.save('multi/multi_epoch/*.py')
-wb.watch([q_encoder],log='all',log_freq=500)
+wb.save('multi/care/*.py')
+wb.watch([q_encoder, k_encoder],log='all',log_freq=500)
 
-Pretext(q_encoder,tfr_model, optimizer, n_epochs, criterion, pretext_loader, test_subjects, wb, device, SAVE_PATH, BATCH_SIZE)
+Pretext(q_encoder, k_encoder, m, LAMBDA, optimizer, n_epochs, criterion, pretext_loader, test_subjects, wb, device, SAVE_PATH, BATCH_SIZE)
 
 wb.finish()
