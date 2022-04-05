@@ -53,9 +53,6 @@ def noise_channel(ts, mode, degree):
         noise2 = f(x_new)
         out_ts = ts + noise1 + noise2
 
-    else:
-        out_ts = ts
-
     return out_ts
 
 
@@ -69,7 +66,7 @@ def add_noise(x, ratio):
     """
     for i in range(x.shape[0]):
 
-        mode = np.random.choice(["high", "low", "both", "no"])
+        mode = np.random.choice(["high", "low", "both"])
         x[i, :] = noise_channel(x[i, :], mode=mode, degree=0.05)
 
     return x
