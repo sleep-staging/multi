@@ -49,7 +49,7 @@ set_random_seeds(seed=random_state, cuda=device == "cuda")
 
 
 # Extract number of channels and time steps from dataset
-n_channels, input_size_samples = (2, 3000)
+n_channels, input_size_samples = (1, 3000)
 q_encoder = sleep_model(n_channels, input_size_samples, n_dim = N_DIM).to(device)
 k_encoder = sleep_model(n_channels, input_size_samples, n_dim = N_DIM).to(device)
 

@@ -73,7 +73,7 @@ def sleep_model(n_channels, input_size_samples, n_dim = 256):
             
             if proj=='mid':
                 assert len(x.shape) == 3, 'Send a single epoch'
-                return x # B,256
+                return self.enc(x[:,:1,:]) # B,256
         
             epoch_len = x.shape[1] # 7          
             temp = []

@@ -53,7 +53,6 @@ def evaluate(q_encoder, train_loader, test_loader, device):
 
 
 def task(X_train, X_test, y_train, y_test):
-    
     scaler = StandardScaler()
     X_train = scaler.fit_transform(X_train)
     X_test = scaler.transform(X_test)
@@ -84,8 +83,8 @@ def kfold_evaluate(q_encoder, test_subjects, device, BATCH_SIZE):
         test_subjects_train = [rec for sub in test_subjects_train for rec in sub]
         test_subjects_test = [rec for sub in test_subjects_test for rec in sub]
 
-        train_loader = DataLoader(TuneDataset(test_subjects_train), batch_size=BATCH_SIZE, shuffle=True, num_workers=4, persistent_workers=True)
-        test_loader = DataLoader(TuneDataset(test_subjects_test), batch_size=BATCH_SIZE, shuffle= False, num_workers=4, persistent_workers=True)
+        train_loader = DataLoader(TuneDataset(test_subjects_train), batch_size=BATCH_SIZE, shuffle=True)
+        test_loader = DataLoader(TuneDataset(test_subjects_test), batch_size=BATCH_SIZE, shuffle= False)
         test_acc, _, test_f1, test_kappa, bal_acc, gt, pd = evaluate(q_encoder, train_loader, test_loader, device)
 
         total_acc.append(test_acc)
@@ -183,7 +182,7 @@ def Pretext(
             bot_res, bot_tfr = k_encoder(pos, proj='proj')
              
              # backprop
-            loss = (criterion(top_res, top_tfr) + criterion(bot_res, bot_tfr)) + lambda1((top_res, bot_tfr) + (bot_res, top_tfr))
+            loss = (criterion(top_res, top_tfr) + criterion(bot_res, bot_tfr)) + lambda1*(criterion(top_res, bot_tfr) + criterion(bot_res, top_tfr))
 
             # loss back
             all_loss.append(loss.item())
@@ -196,6 +195,7 @@ def Pretext(
             # exponential moving average (EMA)
             for param_q, param_k in zip(q_encoder.parameters(), k_encoder.parameters()):
                 param_k.data = param_k.data * m + param_q.data * (1. - m) 
+
 
             N = 1000
             if (step + 1) % N == 0:
