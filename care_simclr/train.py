@@ -14,6 +14,7 @@ import numpy as np
 from torch.utils.data import DataLoader, Dataset
 
 
+
 # Train, test
 def evaluate(q_encoder, train_loader, test_loader, device):
 
@@ -179,11 +180,11 @@ def Pretext(
             )  # (B, 7, 2, 3000)  (B, 7, 2, 3000)     
         
             top_res, top_tfr = q_encoder(anc, proj='proj')
-            bot_res, bot_tfr = k_encoder(pos, proj='proj')
+            bot_res, bot_tfr = q_encoder(pos, proj='proj')
              
             # backprop
             loss = (criterion(top_res, bot_res) + criterion(top_tfr, bot_tfr)) + lambda1*(criterion(top_res, bot_tfr) + criterion(top_tfr, bot_res))
-
+            
             # loss back
             all_loss.append(loss.item())
             pretext_loss.append(loss.cpu().detach().item())
@@ -192,11 +193,6 @@ def Pretext(
             loss.backward()
             optimizer.step()  # only update encoder_q
             
-            # exponential moving average (EMA)
-            for param_q, param_k in zip(q_encoder.parameters(), k_encoder.parameters()):
-                param_k.data = param_k.data * m + param_q.data * (1. - m) 
-
-
             N = 1000
             if (step + 1) % N == 0:
                 scheduler.step(sum(all_loss[-50:]))
@@ -206,7 +202,7 @@ def Pretext(
 
         wandb.log({"ssl_loss": np.mean(pretext_loss), "Epoch": epoch})
 
-        if epoch >= 40 and (epoch) % 20 == 0:
+        if epoch >= 40 and (epoch) % 15 == 0:
 
             test_acc, test_f1, test_kappa, bal_acc = kfold_evaluate(
                 q_encoder, test_subjects, device, BATCH_SIZE

@@ -138,7 +138,7 @@ wb = wandb.init(
         notes="single-epoch, symmetric loss, 1000 samples, using same projection heads and no batch norm, original simclr",
         save_code=True,
         entity="sleep-staging",
-        name="care, T=0.5",
+        name="care-mom, T=0.5",
     )
 wb.save('multi/care/*.py')
 wb.watch([q_encoder, k_encoder],log='all',log_freq=500)

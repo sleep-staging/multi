@@ -167,8 +167,8 @@ def Pretext(
         ):
             q_encoder.train()
             
-            anc = anc[:,:5].float()
-            pos = pos[:,:5].float()
+            anc = anc.float()
+            pos = pos.float()
             
             anc, pos = (
                 anc.to(device),

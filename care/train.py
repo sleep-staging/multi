@@ -52,12 +52,7 @@ def evaluate(q_encoder, train_loader, test_loader, device):
     return acc, cm, f1, kappa, bal_acc, gt, pd
 
 
-<<<<<<< Updated upstream
 def task(X_train, X_test, y_train, y_test):
-=======
-def task(X_train, X_test, y_train, y_test): # (B, 256), (B, 1)
-    
->>>>>>> Stashed changes
     scaler = StandardScaler()
     X_train = scaler.fit_transform(X_train)
     X_test = scaler.transform(X_test)
@@ -175,8 +170,8 @@ def Pretext(
         ):
             q_encoder.train(); k_encoder.train() # for dropout
             
-            anc = anc[:,:5].float()
-            pos = pos[:,:5].float()
+            anc = anc.float()
+            pos = pos.float()
         
             anc, pos = (
                 anc.to(device),
@@ -186,12 +181,8 @@ def Pretext(
             top_res, top_tfr = q_encoder(anc, proj='pred')
             bot_res, bot_tfr = k_encoder(pos, proj='proj')
              
-             # backprop
-<<<<<<< Updated upstream
-            loss = (criterion(top_res, top_tfr) + criterion(bot_res, bot_tfr)) + lambda1*(criterion(top_res, bot_tfr) + criterion(bot_res, top_tfr))
-=======
-            loss = (criterion(top_res, top_tfr) + criterion(bot_res, bot_tfr)) + lambda1(criterion(top_res, bot_tfr) + criterion(bot_res, top_tfr))
->>>>>>> Stashed changes
+            # backprop
+            loss = (criterion(top_res, bot_res) + criterion(top_tfr, bot_tfr)) + lambda1*(criterion(top_res, bot_tfr) + criterion(top_tfr, bot_res))
 
             # loss back
             all_loss.append(loss.item())
@@ -215,7 +206,7 @@ def Pretext(
 
         wandb.log({"ssl_loss": np.mean(pretext_loss), "Epoch": epoch})
 
-        if epoch >= 40 and (epoch) % 5 == 0:
+        if epoch >= 40 and (epoch) % 15 == 0:
 
             test_acc, test_f1, test_kappa, bal_acc = kfold_evaluate(
                 q_encoder, test_subjects, device, BATCH_SIZE

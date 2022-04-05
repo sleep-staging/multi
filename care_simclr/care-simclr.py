@@ -51,11 +51,6 @@ set_random_seeds(seed=random_state, cuda=device == "cuda")
 # Extract number of channels and time steps from dataset
 n_channels, input_size_samples = (1, 3000)
 q_encoder = sleep_model(n_channels, input_size_samples, n_dim = N_DIM).to(device)
-k_encoder = sleep_model(n_channels, input_size_samples, n_dim = N_DIM).to(device)
-
-for param_q, param_k in zip(q_encoder.parameters(), k_encoder.parameters()):
-    param_k.data.copy_(param_q.data) 
-    param_k.requires_grad = False  # not update by gradient
 
 optimizer = torch.optim.Adam(q_encoder.parameters(), lr=lr, weight_decay=WEIGHT_DECAY)
 criterion = loss_fn(device).to(device)
@@ -138,11 +133,11 @@ wb = wandb.init(
         notes="single-epoch, symmetric loss, 1000 samples, using same projection heads and no batch norm, original simclr",
         save_code=True,
         entity="sleep-staging",
-        name="sym, new, grad_acc w/ anc, T=1",
+        name="care-simclr, T=1",
     )
 wb.save('multi/care/*.py')
-wb.watch([q_encoder, k_encoder],log='all',log_freq=500)
+wb.watch([q_encoder],log='all',log_freq=500)
 
-Pretext(q_encoder, k_encoder, m, LAMBDA, optimizer, n_epochs, criterion, pretext_loader, test_subjects, wb, device, SAVE_PATH, BATCH_SIZE)
+Pretext(q_encoder, LAMBDA, optimizer, n_epochs, criterion, pretext_loader, test_subjects, wb, device, SAVE_PATH, BATCH_SIZE)
 
 wb.finish()
