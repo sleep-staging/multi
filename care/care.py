@@ -12,6 +12,7 @@ import copy
 import wandb
 import torch
 from torch.utils.data import DataLoader, Dataset
+from tfr import Transformer
 
 
 PATH = '/scratch/sleepkfold_allsamples/'
@@ -49,8 +50,11 @@ set_random_seeds(seed=random_state, cuda=device == "cuda")
 # Extract number of channels and time steps from dataset
 n_channels, input_size_samples = (2, 3000)
 model = sleep_model(n_channels, input_size_samples, n_dim = N_DIM)
+tfr_model = Transformer(dim=128,depth=4,heads=4,mlp_dim=128,dropout=0.3)
+tfr_model = tfr_model.to(device)
 
 q_encoder = model.to(device)
+
 
 optimizer = torch.optim.Adam(q_encoder.parameters(), lr=lr, weight_decay=WEIGHT_DECAY)
 criterion = loss_fn(device,T=TEMPERATURE).to(device)
@@ -138,6 +142,6 @@ wb = wandb.init(
 wb.save('multi/multi_epoch/*.py')
 wb.watch([q_encoder],log='all',log_freq=500)
 
-Pretext(q_encoder, optimizer, n_epochs, criterion, pretext_loader, test_subjects, wb, device, SAVE_PATH, BATCH_SIZE)
+Pretext(q_encoder,tfr_model, optimizer, n_epochs, criterion, pretext_loader, test_subjects, wb, device, SAVE_PATH, BATCH_SIZE)
 
 wb.finish()

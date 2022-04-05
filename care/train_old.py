@@ -136,6 +136,7 @@ class TuneDataset(Dataset):
 # Pretrain
 def Pretext(
     q_encoder,
+    tfr_model,
     optimizer,
     Epoch,
     criterion,
@@ -186,7 +187,14 @@ def Pretext(
             
             anc_features = torch.stack(anc_features, dim=1)  # (B, 7, 128)
             pos_features = torch.stack(pos_features, dim=1)  # (B, 7, 128)
-                       
+
+
+            # transformer features
+            tfr_anc_features = tfr_model(anc_features) # (B,128)
+            tfr_pos_features = tfr_model(pos_features) # (B,128)
+            tfr_anc_features = tfr_anc_features.unsqueeze(1)
+            tfr_pos_features = tfr_pos_features.unsqueeze(1)
+
              # backprop
             loss1 = criterion(anc_features[:, num_len // 2], pos_features)
             loss2 = criterion(pos_features[:, num_len // 2], anc_features)
