@@ -136,8 +136,6 @@ class TuneDataset(Dataset):
 # Pretrain
 def Pretext(
     q_encoder,
-    k_encoder,
-    m,
     lambda1,
     optimizer,
     Epoch,
@@ -169,7 +167,7 @@ def Pretext(
         for index, (anc, pos) in enumerate(
             tqdm(pretext_loader, desc="pretrain")
         ):
-            q_encoder.train(); k_encoder.train() # for dropout
+            q_encoder.train() # for dropout
             
             anc = anc.float()
             pos = pos.float()
