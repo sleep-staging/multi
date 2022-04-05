@@ -52,12 +52,8 @@ def evaluate(q_encoder, train_loader, test_loader, device):
     return acc, cm, f1, kappa, bal_acc, gt, pd
 
 
-<<<<<<< Updated upstream
-def task(X_train, X_test, y_train, y_test):
-=======
 def task(X_train, X_test, y_train, y_test): # (B, 256), (B, 1)
     
->>>>>>> Stashed changes
     scaler = StandardScaler()
     X_train = scaler.fit_transform(X_train)
     X_test = scaler.transform(X_test)
@@ -187,11 +183,7 @@ def Pretext(
             bot_res, bot_tfr = k_encoder(pos, proj='proj')
              
              # backprop
-<<<<<<< Updated upstream
             loss = (criterion(top_res, top_tfr) + criterion(bot_res, bot_tfr)) + lambda1*(criterion(top_res, bot_tfr) + criterion(bot_res, top_tfr))
-=======
-            loss = (criterion(top_res, top_tfr) + criterion(bot_res, bot_tfr)) + lambda1(criterion(top_res, bot_tfr) + criterion(bot_res, top_tfr))
->>>>>>> Stashed changes
 
             # loss back
             all_loss.append(loss.item())
@@ -215,7 +207,7 @@ def Pretext(
 
         wandb.log({"ssl_loss": np.mean(pretext_loss), "Epoch": epoch})
 
-        if epoch >= 40 and (epoch) % 5 == 0:
+        if epoch >= 40 and (epoch) % 20 == 0:
 
             test_acc, test_f1, test_kappa, bal_acc = kfold_evaluate(
                 q_encoder, test_subjects, device, BATCH_SIZE
