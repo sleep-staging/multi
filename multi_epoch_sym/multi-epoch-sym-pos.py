@@ -1,7 +1,7 @@
 from augmentations import *
 from loss import loss_fn
 from model import sleep_model
-from train import *
+from train_ga import *
 from utils import *
 
 from braindecode.util import set_random_seeds
@@ -24,6 +24,7 @@ lr = 5e-4
 n_epochs = 200
 NUM_WORKERS = 5
 N_DIM = 256
+EPOCH_LEN = 7
 TEMPERATURE = 1
 
 ####################################################################################################
@@ -128,11 +129,11 @@ test_subjects = list(test_subjects.values())
 
 
 wb = wandb.init(
-        project="WTM-multi",
+        project="EPF-Multi-Epoch",
         notes="single-epoch, symmetric loss, 1000 samples, using same projection heads and no batch norm, original simclr",
         save_code=True,
         entity="sleep-staging",
-        name="multi-epoch-sym-pos, w/ anc, chnage lr, T=1",
+        name="multi-epoch-sym-pos, w/ anc, T=1",
     )
 wb.save('multi/multi_epoch_sym/*.py')
 wb.watch([q_encoder],log='all',log_freq=500)

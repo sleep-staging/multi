@@ -228,46 +228,6 @@ class TuneDataset(BaseConcatDataset):
         return X, y
 
 
-class RelativePositioningDataset(BaseConcatDataset):
-    """BaseConcatDataset with __getitem__ that expects 2 indices and a target."""
-
-    def __init__(self, list_of_ds, epoch_len=7):
-        super().__init__(list_of_ds)
-        self.return_pair = True
-        self.epoch_len = epoch_len
-
-    def __getitem__(self, index):
-
-        pos, neg = index
-        pos_data = []
-        neg_data = []
-
-        assert pos != neg, "pos and neg should not be the same"
-
-        for i in range(-(self.epoch_len // 2), self.epoch_len // 2 + 1):
-            pos_data.append(super().__getitem__(pos + i)[0])
-            neg_data.append(super().__getitem__(neg + i)[0])
-
-        pos_data = np.stack(pos_data, axis=0) # (7, 2, 3000)
-        neg_data = np.stack(neg_data, axis=0) # (7, 2, 3000)
-
-        return pos_data, neg_data
-
-
-class TuneDataset(BaseConcatDataset):
-    """BaseConcatDataset for train and test"""
-
-    def __init__(self, list_of_ds):
-        super().__init__(list_of_ds)
-
-    def __getitem__(self, index):
-
-        X = super().__getitem__(index)[0]
-        y = super().__getitem__(index)[1]
-
-        return X, y
-
-
 class RecordingSampler(Sampler):
     def __init__(self, metadata, random_state=None, epoch_len=7):
 
