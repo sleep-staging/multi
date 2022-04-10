@@ -1,7 +1,7 @@
 from augmentations import *
 from loss import loss_fn
 from model import sleep_model
-from train_ga import *
+from train import *
 from utils import *
 
 from braindecode.util import set_random_seeds
@@ -17,7 +17,7 @@ from torch.utils.data import DataLoader, Dataset
 PATH = '/scratch/sleepkfold_allsamples/'
 
 # Params
-SAVE_PATH = "multi-epoch-final.pth"
+SAVE_PATH = "multi-epoch-xx.pth"
 WEIGHT_DECAY = 1e-4
 BATCH_SIZE = 128
 lr = 5e-4
@@ -47,7 +47,7 @@ set_random_seeds(seed=random_state, cuda=device == "cuda")
 
 
 # Extract number of channels and time steps from dataset
-n_channels, input_size_samples = (2, 3000)
+n_channels, input_size_samples = (1, 3000)
 model = sleep_model(n_channels, input_size_samples, n_dim = N_DIM)
 
 q_encoder = model.to(device)
@@ -72,7 +72,7 @@ class pretext_data(Dataset):
         
         path = self.file_path[index]
         data = np.load(path)
-        pos = data['pos'] #(7, 2, 3000)
+        pos = data['pos'][:, :1, :] #(7, 2, 3000)
         anc = copy.deepcopy(pos)
         
         # augment
@@ -133,7 +133,7 @@ wb = wandb.init(
         notes="single-epoch, symmetric loss, 1000 samples, using same projection heads and no batch norm, original simclr",
         save_code=True,
         entity="sleep-staging",
-        name="multi-epoch-sym, grad_acc, w/ anc, T=1",
+        name="multi-epoch-sym, no grad_acc, w/ anc, T=1",
     )
 wb.save('multi/multi_epoch_sym/*.py')
 wb.watch([q_encoder],log='all',log_freq=500)

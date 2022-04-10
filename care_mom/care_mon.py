@@ -58,7 +58,7 @@ for param_q, param_k in zip(q_encoder.parameters(), k_encoder.parameters()):
     param_k.requires_grad = False  # not update by gradient
 
 optimizer = torch.optim.Adam(q_encoder.parameters(), lr=lr, weight_decay=WEIGHT_DECAY)
-criterion = loss_fn(device).to(device)
+criterion = loss_fn(device, T=TEMPERATURE).to(device)
 
 #####################################################################################################
 
@@ -138,7 +138,7 @@ wb = wandb.init(
         notes="single-epoch, symmetric loss, 1000 samples, using same projection heads and no batch norm, original simclr",
         save_code=True,
         entity="sleep-staging",
-        name="care-mom, T=0.5",
+        name="care-mom, T=1",
     )
 wb.save('multi/care/*.py')
 wb.watch([q_encoder, k_encoder],log='all',log_freq=500)

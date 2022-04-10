@@ -15,13 +15,13 @@ from torch.utils.data import DataLoader
 from torch.utils.data.sampler import Sampler
 from sklearn.utils import check_random_state
 
-PATH = '/scratch/sleepkfold_allsamples/'
+PATH = '/scratch/sleepkfold_pos_2/'
 DATA_PATH = '/scratch/'
 os.makedirs(PATH, exist_ok=True)
 
 # Params
 BATCH_SIZE = 1
-POS_MIN = 10
+POS_MIN = 2
 NEG_MIN = 15
 EPOCH_LEN = 7
 NUM_SAMPLES = 500
@@ -201,8 +201,6 @@ class RelativePositioningDataset(BaseConcatDataset):
         pos, neg = index
         pos_data = []
         neg_data = []
-
-        assert pos != neg, "pos and neg should not be the same"
 
         for i in range(-(self.epoch_len // 2), self.epoch_len // 2 + 1):
             pos_data.append(super().__getitem__(pos + i)[0])
