@@ -195,8 +195,8 @@ def Pretext(
         ):
             q_encoder.train()
             
-            anc = anc[:,:5].float()
-            pos = pos[:,:5].float()
+            anc = anc.float()
+            pos = pos.float()
             
             anc, pos = (
                 anc.to(device),
@@ -231,8 +231,8 @@ def Pretext(
             
             optimizer.step()  # only update encoder_q
 
-            all_loss.append(loss1.item()+loss2.item())
-            pretext_loss.append(loss1.cpu().detach().item()+loss2.cpu().detach().item())
+            all_loss.append(loss1.detach().cpu().item()+loss2.detach().cpu().item())
+            pretext_loss.append(loss1.detach().cpu().item() + loss2.detach().cpu().item())
 
             N = 1000
             if (step + 1) % N == 0:

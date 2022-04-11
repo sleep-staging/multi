@@ -181,6 +181,7 @@ def Pretext(
     )
 
     all_loss = []
+    scaler = torch.cuda.amp.GradScaler()
 
     for epoch in range(Epoch):
         
@@ -206,24 +207,27 @@ def Pretext(
             num_len = anc.shape[1]
             anc_features = []
             pos_features = []
-        
-            for i in range(num_len):
-                anc_features.append(q_encoder(anc[:, i], proj='top')) #(B, 128)
-                pos_features.append(q_encoder(pos[:, i], proj='top'))  # (B, 128)
             
-            anc_features = torch.stack(anc_features, dim=1)  # (B, 7, 128)
-            pos_features = torch.stack(pos_features, dim=1)  # (B, 7, 128)
-                       
-             # backprop
-            loss1 = criterion(anc_features[:, num_len // 2], pos_features)
-            loss2 = criterion(pos_features[:, num_len // 2], anc_features)
-            loss = (loss1 + loss2) / 2
+            with torch.cuda.amp.autocast():
+                for i in range(num_len):
+                    anc_features.append(q_encoder(anc[:, i], proj='top')) #(B, 128)
+                    pos_features.append(q_encoder(pos[:, i], proj='top'))  # (B, 128)
 
-            # loss back
+                anc_features = torch.stack(anc_features, dim=1)  # (B, 7, 128)
+                pos_features = torch.stack(pos_features, dim=1)  # (B, 7, 128)
+
+                 # backprop
+                loss1 = criterion(anc_features[:, num_len // 2], pos_features)
+                loss2 = criterion(pos_features[:, num_len // 2], anc_features)
+                loss = (loss1 + loss2) / 2
+                
+
             optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()  # only update encoder_q
+            scaler.scale(loss).backward()
+            scaler.step(optimizer)
+            scaler.update()
             
+            # loss back          
             all_loss.append(loss.detach().cpu().item())
             pretext_loss.append(loss.detach().cpu().item())
 
