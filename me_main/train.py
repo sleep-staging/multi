@@ -198,9 +198,6 @@ def Pretext(
             
             anc = anc.float()
             pos = pos.float()
-            
-            anc = torch.rand(128, 13, 1, 3000).float()
-            pos = torch.rand(128, 13, 1, 3000).float()
         
             anc, pos = (
                 anc.to(device),
@@ -220,13 +217,11 @@ def Pretext(
                 anc_features = torch.stack(anc_features, dim=1)  # (B, 7, 128)
                 pos_features = torch.stack(pos_features, dim=1)  # (B, 7, 128)
                                
-                loss1 = 0; loss2 = 0
-                for i in range(num_len):
-                    loss1 += criterion(anc_features[:, i], pos_features)
-                    loss2 += criterion(pos_features[:, i], anc_features)
+                sel1 = np.random.choice(num_len)
+                sel2 = np.random.choice(num_len)       
+                loss1 = criterion(anc_features[:, sel1], pos_features)
+                loss2 = criterion(pos_features[:, sel2], anc_features)
                     
-                loss1 = loss1.mean()
-                loss2 = loss2.mean()
                 loss = (loss1 + loss2) / 2
                 
             optimizer.zero_grad()

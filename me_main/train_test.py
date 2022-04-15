@@ -239,8 +239,8 @@ def Pretext(
             scaler.step(optimizer)
             scaler.update()
                 
-            all_loss.append(loss1.detach().cpu().item()+loss2.detach().cpu().item())
-            pretext_loss.append(loss1.detach().cpu().item() + loss2.detach().cpu().item())
+            all_loss.append((loss1.detach().cpu().item()+loss2.detach().cpu().item()) / 2)
+            pretext_loss.append((loss1.detach().cpu().item()+loss2.detach().cpu().item()) / 2)
     
 
             N = 1000
