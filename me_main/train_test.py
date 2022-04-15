@@ -110,8 +110,8 @@ def kfold_evaluate(q_encoder, test_subjects, device, BATCH_SIZE):
         test_subjects_train = [rec for sub in test_subjects_train for rec in sub]
         test_subjects_test = [rec for sub in test_subjects_test for rec in sub]
 
-        train_loader = DataLoader(TuneDataset(test_subjects_train), batch_size=BATCH_SIZE, shuffle=True)
-        test_loader = DataLoader(TuneDataset(test_subjects_test), batch_size=BATCH_SIZE, shuffle= False)
+        train_loader = DataLoader(TuneDataset(test_subjects_train), batch_size=BATCH_SIZE*2, shuffle=True)
+        test_loader = DataLoader(TuneDataset(test_subjects_test), batch_size=BATCH_SIZE*2, shuffle= False)
         test_acc, _, test_f1, test_kappa, bal_acc, gt, pd = evaluate(q_encoder, train_loader, test_loader, device, i)
 
         total_acc.append(test_acc)
@@ -198,34 +198,35 @@ def Pretext(
             
             anc = anc.float()
             pos = pos.float()
-            
-            anc = torch.rand(128, 11, 1, 3000).float()
-            pos = torch.rand(128, 11, 1, 3000).float()
         
             anc, pos = (
                 anc.to(device),
                 pos.to(device)
-            )  # (B, 7, 2, 3000)  (B, 7, 2, 3000) 
-                     
+            )  # (B, 7, 1, 3000)  (B, 7, 1, 3000) 
+            
+            num_len = anc.shape[1]
+            sel1 = np.random.choice(num_len)
+            sel2 = np.random.choice(num_len)
+            
+            # backprop
+            optimizer.zero_grad()
+            
             with torch.cuda.amp.autocast():
-                num_len = anc.shape[1]
                 pos_features = []
 
-                anc_features = q_encoder(anc[:, num_len // 2], proj='top') #(B, 128)
+                anc_features = q_encoder(anc[:, sel1], proj='top') #(B, 128)
                 for i in range(num_len):
                     pos_features.append(q_encoder(pos[:, i], proj='top'))  # (B, 128) 
 
                 pos_features = torch.stack(pos_features, dim=1)  # (B, 7, 128)
                 loss1 = criterion(anc_features, pos_features) 
                 
-            # backprop
-            optimizer.zero_grad()
             
             scaler.scale(loss1 / 2).backward()
 
             with torch.cuda.amp.autocast():
                 anc_features = []
-                pos_features = q_encoder(pos[:, num_len // 2], proj='top') #(B, 128)
+                pos_features = q_encoder(pos[:, sel2], proj='top') #(B, 128)
                 for i in range(num_len):
                     anc_features.append(q_encoder(anc[:, i], proj='top'))  # (B, 128) 
 
@@ -240,6 +241,7 @@ def Pretext(
                 
             all_loss.append(loss1.detach().cpu().item()+loss2.detach().cpu().item())
             pretext_loss.append(loss1.detach().cpu().item() + loss2.detach().cpu().item())
+    
 
             N = 1000
             if (step + 1) % N == 0:

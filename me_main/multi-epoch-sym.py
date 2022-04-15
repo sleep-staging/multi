@@ -1,7 +1,7 @@
 from augmentations import *
 from loss import loss_fn
 from model import sleep_model
-from train import *
+from train_test import *
 from utils import *
 
 from braindecode.util import set_random_seeds
@@ -25,7 +25,7 @@ def main():
     n_epochs = 400
     NUM_WORKERS = 8
     N_DIM = 256
-    TEMPERATURE = 1
+    TEMPERATURE = 0.5
 
     ####################################################################################################
 
@@ -114,9 +114,9 @@ def main():
             notes="single-epoch, symmetric loss, 1000 samples, using same projection heads and no batch norm, original simclr",
             save_code=True,
             entity="sleep-staging",
-            name="multi-epoch-sym, amp, ga, L=7",
+            name="me,  random, ga, amp, T=0.5, L=7",
         )
-    wb.save('multi/multi_epoch_sym/*.py')
+    wb.save('multi/me_main/*.py')
     wb.watch([q_encoder],log='all',log_freq=500)
 
     Pretext(q_encoder, optimizer, n_epochs, criterion, pretext_loader, test_subjects, wb, device, SAVE_PATH, BATCH_SIZE)

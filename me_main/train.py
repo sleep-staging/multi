@@ -198,50 +198,39 @@ def Pretext(
             
             anc = anc.float()
             pos = pos.float()
+            
+            anc = torch.rand(128, 13, 1, 3000).float()
+            pos = torch.rand(128, 13, 1, 3000).float()
         
             anc, pos = (
                 anc.to(device),
                 pos.to(device)
-            )  # (B, 7, 2, 3000)  (B, 7, 2, 3000) 
+            )  # (B, 7, 1, 3000)  (B, 7, 1, 3000) 
 
          
             with torch.cuda.amp.autocast():
                 num_len = anc.shape[1]
+                anc_features = []
                 pos_features = []
                 
                 for i in range(num_len):
-                    pos_features.append(q_encoder(pos[:, i], proj='top'))  # (B, 128) 
-
-                pos_features = torch.stack(pos_features, dim=1)  # (B, 7, 128)
-                
-                loss1 = 0
-                for i in range(num_len):
-                    anc_features = q_encoder(anc[:, i], proj='top')
-                    loss1 += criterion(anc_features, pos_features) 
-                loss1 = loss1.mean()
-                
-            # backprop
-            optimizer.zero_grad()
-            
-            scaler.scale(loss1 / 2).backward()
-
-            with torch.cuda.amp.autocast():
-                anc_features = []
-               
-                for i in range(num_len):
-                    anc_features.append(q_encoder(anc[:, i], proj='top'))  # (B, 128) 
+                    anc_features.append(q_encoder(anc[:, i], proj='top')) #(B, 128)
+                    pos_features.append(q_encoder(pos[:, i], proj='top'))  # (B, 128)
 
                 anc_features = torch.stack(anc_features, dim=1)  # (B, 7, 128)
-                
-                loss2 = 0
+                pos_features = torch.stack(pos_features, dim=1)  # (B, 7, 128)
+                               
+                loss1 = 0; loss2 = 0
                 for i in range(num_len):
-                    pos_features = q_encoder(pos[:, i], proj='top') #(B, 128)
-                    loss2 += criterion(pos_features,anc_features)
+                    loss1 += criterion(anc_features[:, i], pos_features)
+                    loss2 += criterion(pos_features[:, i], anc_features)
+                    
+                loss1 = loss1.mean()
                 loss2 = loss2.mean()
-            
-            # backprop
-            scaler.scale(loss2 / 2).backward()
-            
+                loss = (loss1 + loss2) / 2
+                
+            optimizer.zero_grad()
+            scaler.scale(loss).backward()
             scaler.step(optimizer)
             scaler.update()
                 
