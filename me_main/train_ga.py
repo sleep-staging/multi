@@ -203,35 +203,45 @@ def Pretext(
                 anc.to(device),
                 pos.to(device)
             )  # (B, 7, 1, 3000)  (B, 7, 1, 3000) 
-
-         
+            
+            num_len = anc.shape[1]
+            sel1 = np.random.choice(num_len)
+            sel2 = np.random.choice(num_len)
+            
+            # backprop
+            optimizer.zero_grad()
+            
             with torch.cuda.amp.autocast():
-                num_len = anc.shape[1]
-                anc_features = []
                 pos_features = []
-                
+
+                anc_features = q_encoder(anc[:, sel1], proj='top') #(B, 128)
                 for i in range(num_len):
-                    anc_features.append(q_encoder(anc[:, i], proj='top')) #(B, 128)
-                    pos_features.append(q_encoder(pos[:, i], proj='top'))  # (B, 128)
+                    pos_features.append(q_encoder(pos[:, i], proj='top'))  # (B, 128) 
+
+                pos_features = torch.stack(pos_features, dim=1)  # (B, 7, 128)
+                loss1 = criterion(anc_features, pos_features) 
+                
+            
+            scaler.scale(loss1).backward()
+
+            with torch.cuda.amp.autocast():
+                anc_features = []
+                pos_features = q_encoder(pos[:, sel2], proj='top') #(B, 128)
+                for i in range(num_len):
+                    anc_features.append(q_encoder(anc[:, i], proj='top'))  # (B, 128) 
 
                 anc_features = torch.stack(anc_features, dim=1)  # (B, 7, 128)
-                pos_features = torch.stack(pos_features, dim=1)  # (B, 7, 128)
-                               
-                sel1 = np.random.choice(num_len)
-                sel2 = np.random.choice(num_len)       
-                loss1 = criterion(anc_features[:, sel1], pos_features)
-                loss2 = criterion(pos_features[:, sel2], anc_features)
+                loss2 = criterion(pos_features,anc_features)
                     
-                loss = (loss1 + loss2)
-                
-            optimizer.zero_grad()
-            scaler.scale(loss).backward()
+             # backprop
+            scaler.scale(loss2).backward()
+            
             scaler.step(optimizer)
             scaler.update()
                 
-            all_loss.append(loss.detach().cpu().item())
-            pretext_loss.append(loss.detach().cpu().item())
-
+            all_loss.append(loss1.detach().cpu().item() + loss2.detach().cpu().item())
+            pretext_loss.append(loss1.detach().cpu().item() + loss2.detach().cpu().item())
+    
             N = 1000
             if (step + 1) % N == 0:
                 scheduler.step(sum(all_loss[-50:]))

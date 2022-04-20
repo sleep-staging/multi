@@ -281,7 +281,7 @@ class RelativePositioningSampler(RecordingSampler):
         self.same_rec_neg = same_rec_neg
         self.info['index'] = self.info['index'].apply(lambda x: x[self.epoch_len // 2 : -(self.epoch_len // 2) ])
         self.info['i_start_in_trial'] = self.info['i_start_in_trial'].apply(lambda x: x[self.epoch_len // 2 : -(self.epoch_len // 2) ])
-        self.info.iloc[-1]['index'] = self.info.iloc[-1]['index'][:-(self.epoch_len // 2) - 1]
+        self.info.iloc[-1]['index'] = self.info.iloc[-1]['index'][:-(7 // 2) - 1]
         self.info.iloc[-1]['i_start_in_trial'] = self.info.iloc[-1]['i_start_in_trial'][: -(self.epoch_len // 2) - 1]
 
     def _sample_pair(self):
@@ -360,8 +360,7 @@ pretext_sampler = RelativePositioningSampler(
     tau_neg=tau_neg,
     n_examples=n_examples_pretext,
     same_rec_neg=True,
-    random_state=random_state,  # Same samples for every iteration of dataloader
-     epoch_len=EPOCH_LEN
+    random_state=random_state  # Same samples for every iteration of dataloader
 )
 
 

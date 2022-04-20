@@ -1,7 +1,7 @@
 from augmentations import *
 from loss import loss_fn
 from model import sleep_model
-from train import *
+from train_ga import *
 from utils import *
 
 from braindecode.util import set_random_seeds
@@ -15,15 +15,15 @@ from torch.utils.data import DataLoader, Dataset
 
 def main():
     
-    PATH = '/scratch/allsamples_7/'
+    PATH = '/scratch/sleepkfold_pos_10/'
 
     # Params
-    SAVE_PATH = "me-sleepedf-7.pth"
+    SAVE_PATH = "multi-epoch-xx.pth"
     WEIGHT_DECAY = 1e-4
-    BATCH_SIZE = 128 
+    BATCH_SIZE = 128
     lr = 5e-4
-    n_epochs = 400
-    NUM_WORKERS = 6
+    n_epochs = 200
+    NUM_WORKERS = 5
     N_DIM = 256
     TEMPERATURE = 1
 
@@ -56,7 +56,6 @@ def main():
 
     #####################################################################################################
 
-
     class pretext_data(Dataset):
 
         def __init__(self, filepath):
@@ -72,14 +71,14 @@ def main():
             path = self.file_path[index]
             data = np.load(path)
             pos = data['pos'][:, :1, :] #(7, 2, 3000)
-            anc = copy.deepcopy(pos)
+            anc = data['neg'][:, :1, :]
             
             # augment
             for i in range(pos.shape[0]):
                 pos[i] = augment(pos[i])
                 anc[i] = augment(anc[i])
             return anc, pos
-      
+        
 
     PRETEXT_FILE = os.listdir(os.path.join(PATH, "pretext"))
     PRETEXT_FILE.sort(key=natural_keys)
@@ -110,13 +109,13 @@ def main():
 
 
     wb = wandb.init(
-            project="EPF-ME",
+            project="EPF-Multi-Epoch",
             notes="single-epoch, symmetric loss, 1000 samples, using same projection heads and no batch norm, original simclr",
             save_code=True,
             entity="sleep-staging",
-            name="random, amp, T=1, L=7",
+            name="multi-epoch-sym-pos, w/ anc, pos=10, T=1",
         )
-    wb.save('multi/me_main/*.py')
+    wb.save('multi/multi_epoch_sym/*.py')
     wb.watch([q_encoder],log='all',log_freq=500)
 
     Pretext(q_encoder, optimizer, n_epochs, criterion, pretext_loader, test_subjects, wb, device, SAVE_PATH, BATCH_SIZE)
@@ -125,6 +124,4 @@ def main():
 
 
 if __name__ == "__main__":
-    
-    os.environ['CUDA_LAUNCH_BLOCKING'] = "1"
     main()

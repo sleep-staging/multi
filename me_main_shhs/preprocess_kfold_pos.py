@@ -15,15 +15,15 @@ from torch.utils.data import DataLoader
 from torch.utils.data.sampler import Sampler
 from sklearn.utils import check_random_state
 
-PATH = '/scratch/allsamples_3/'
+PATH = '/scratch/sleepkfold_pos_2/'
 DATA_PATH = '/scratch/'
 os.makedirs(PATH, exist_ok=True)
 
 # Params
 BATCH_SIZE = 1
-POS_MIN = 1
+POS_MIN = 2
 NEG_MIN = 15
-EPOCH_LEN = 3
+EPOCH_LEN = 7
 NUM_SAMPLES = 500
 SUBJECTS = np.arange(83)
 RECORDINGS = [1, 2]
@@ -202,8 +202,6 @@ class RelativePositioningDataset(BaseConcatDataset):
         pos_data = []
         neg_data = []
 
-        assert pos != neg, "pos and neg should not be the same"
-
         for i in range(-(self.epoch_len // 2), self.epoch_len // 2 + 1):
             pos_data.append(super().__getitem__(pos + i)[0])
             neg_data.append(super().__getitem__(neg + i)[0])
@@ -268,7 +266,7 @@ class RelativePositioningSampler(RecordingSampler):
         tau_pos,
         tau_neg,
         n_examples,
-        same_rec_neg=True,
+        same_rec_pos=True,
         random_state=None,
         epoch_len=7,
     ):
@@ -278,10 +276,10 @@ class RelativePositioningSampler(RecordingSampler):
         self.tau_neg = tau_neg
         self.epoch_len = epoch_len
         self.n_examples = n_examples
-        self.same_rec_neg = same_rec_neg
+        self.same_rec_pos = same_rec_pos
         self.info['index'] = self.info['index'].apply(lambda x: x[self.epoch_len // 2 : -(self.epoch_len // 2) ])
         self.info['i_start_in_trial'] = self.info['i_start_in_trial'].apply(lambda x: x[self.epoch_len // 2 : -(self.epoch_len // 2) ])
-        self.info.iloc[-1]['index'] = self.info.iloc[-1]['index'][:-(self.epoch_len // 2) - 1]
+        self.info.iloc[-1]['index'] = self.info.iloc[-1]['index'][:-(7 // 2) - 1]
         self.info.iloc[-1]['i_start_in_trial'] = self.info.iloc[-1]['i_start_in_trial'][: -(self.epoch_len // 2) - 1]
 
     def _sample_pair(self):
@@ -301,9 +299,9 @@ class RelativePositioningSampler(RecordingSampler):
                 epoch_min = self.info.iloc[rec_ind1]["i_start_in_trial"][self.epoch_len // 2]
                 epoch_max = self.info.iloc[rec_ind1]["i_start_in_trial"][-self.epoch_len // 2]
 
-                if self.same_rec_neg:
-                    mask = ((ts <= ts1 - self.tau_neg) & (ts >= epoch_min)) | (
-                        (ts >= ts1 + self.tau_neg) & (ts <= epoch_max)
+                if self.same_rec_pos:
+                    mask = ((ts >= ts1 - self.tau_pos) & (ts >= epoch_min)) | (
+                        (ts <= ts1 + self.tau_pos) & (ts <= epoch_max)
                     )
                     
                 if sum(mask) == 0:
@@ -359,9 +357,8 @@ pretext_sampler = RelativePositioningSampler(
     tau_pos=tau_pos,
     tau_neg=tau_neg,
     n_examples=n_examples_pretext,
-    same_rec_neg=True,
-    random_state=random_state,  # Same samples for every iteration of dataloader
-     epoch_len=EPOCH_LEN
+    same_rec_pos=True,
+    random_state=random_state  # Same samples for every iteration of dataloader
 )
 
 
