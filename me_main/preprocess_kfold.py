@@ -15,16 +15,15 @@ from torch.utils.data import DataLoader
 from torch.utils.data.sampler import Sampler
 from sklearn.utils import check_random_state
 
-PATH = '/scratch/allsamples_3/'
+PATH = '/scratch/sleepedf_7/'
 DATA_PATH = '/scratch/'
 os.makedirs(PATH, exist_ok=True)
 
 # Params
 BATCH_SIZE = 1
-POS_MIN = 1
+POS_MIN = 2
 NEG_MIN = 15
-EPOCH_LEN = 3
-NUM_SAMPLES = 500
+EPOCH_LEN = 7
 SUBJECTS = np.arange(83)
 RECORDINGS = [1, 2]
 
@@ -35,11 +34,8 @@ random_state = 1234
 n_jobs = 1
 sfreq = 100
 high_cut_hz = 30
-
 window_size_s = 30
-sfreq = 100
 window_size_samples = window_size_s * sfreq
-
 
 
 class SleepPhysionet(BaseConcatDataset):
@@ -161,15 +157,14 @@ windows_dataset = create_windows_from_events(
     mapping=mapping,
 )
 
-
-preprocess(windows_dataset, [Preprocessor(zscore)])
+# Z-score normalization
+# preprocess(windows_dataset, [Preprocessor(zscore)])
 
 
 ###################################################################################################################################
 """ Subject sampling """
 
 rng = np.random.RandomState(1234)
-
 NUM_WORKERS = 0 if n_jobs <= 1 else n_jobs
 PERSIST = False if NUM_WORKERS <= 1 else True
 
@@ -214,18 +209,18 @@ class RelativePositioningDataset(BaseConcatDataset):
         return pos_data, neg_data
 
 
-class TuneDataset(BaseConcatDataset):
-    """BaseConcatDataset for train and test"""
+# class TuneDataset(BaseConcatDataset):
+#     """BaseConcatDataset for train and test"""
 
-    def __init__(self, list_of_ds):
-        super().__init__(list_of_ds)
+#     def __init__(self, list_of_ds):
+#         super().__init__(list_of_ds)
 
-    def __getitem__(self, index):
+#     def __getitem__(self, index):
 
-        X = super().__getitem__(index)[0]
-        y = super().__getitem__(index)[1]
+#         X = super().__getitem__(index)[0]
+#         y = super().__getitem__(index)[1]
 
-        return X, y
+#         return X, y
 
 
 class RecordingSampler(Sampler):
@@ -267,7 +262,6 @@ class RelativePositioningSampler(RecordingSampler):
         metadata,
         tau_pos,
         tau_neg,
-        n_examples,
         same_rec_neg=True,
         random_state=None,
         epoch_len=7,
@@ -277,7 +271,6 @@ class RelativePositioningSampler(RecordingSampler):
         self.tau_pos = tau_pos
         self.tau_neg = tau_neg
         self.epoch_len = epoch_len
-        self.n_examples = n_examples
         self.same_rec_neg = same_rec_neg
         self.info['index'] = self.info['index'].apply(lambda x: x[self.epoch_len // 2 : -(self.epoch_len // 2) ])
         self.info['i_start_in_trial'] = self.info['i_start_in_trial'].apply(lambda x: x[self.epoch_len // 2 : -(self.epoch_len // 2) ])
@@ -350,7 +343,6 @@ for sub in splitted["test"]:
 
 # Sampler
 tau_pos, tau_neg = int(sfreq * POS_MIN * 60), int(sfreq * NEG_MIN * 60)
-n_examples_pretext = NUM_SAMPLES * len(splitted["pretext"].datasets)
 
 print(f'Number of pretext subjects: {len(splitted["pretext"].datasets)}')
 
@@ -358,10 +350,9 @@ pretext_sampler = RelativePositioningSampler(
     splitted["pretext"].get_metadata(),
     tau_pos=tau_pos,
     tau_neg=tau_neg,
-    n_examples=n_examples_pretext,
     same_rec_neg=True,
     random_state=random_state,  # Same samples for every iteration of dataloader
-     epoch_len=EPOCH_LEN
+    epoch_len=EPOCH_LEN
 )
 
 
@@ -378,4 +369,3 @@ for i, arr in tqdm(enumerate(pretext_loader), desc = 'pretext'):
     temp_path = os.path.join(PRETEXT_PATH, str(i) + '.npz')
     np.savez(temp_path, pos = arr[0].numpy().squeeze(0), neg = arr[1].numpy().squeeze(0))
   
-

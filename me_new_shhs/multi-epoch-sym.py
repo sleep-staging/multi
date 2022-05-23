@@ -15,10 +15,10 @@ from torch.utils.data import DataLoader, Dataset
 
 def main():
     
-    PATH = '/scratch/sleepedf_7/'
+    PATH = '/scratch/shhs_7/'
 
     # Params
-    SAVE_PATH = "me-sleepedf-7.pth"
+    SAVE_PATH = "multi-epoch-shhs-7.pth"
     WEIGHT_DECAY = 1e-4
     BATCH_SIZE = 128 
     lr = 5e-4
@@ -69,7 +69,7 @@ def main():
             
             path = self.file_path[index]
             data = np.load(path)
-            pos = data['pos'][:, :1, :] # (7, 1, 3000)
+            pos = data['pos'] # (7, 1, 3000)
             anc = copy.deepcopy(pos)
             
             # augment
@@ -88,33 +88,24 @@ def main():
     TEST_FILE = [os.path.join(PATH, "test", f) for f in TEST_FILE]
 
     print(f'Number of pretext files: {len(PRETEXT_FILE)}')
-    print(f'Number of test records: {len(TEST_FILE)}')
+    print(f'Number of test subjects: {len(TEST_FILE)}')
 
-    pretext_loader = DataLoader(pretext_data(PRETEXT_FILE), batch_size=BATCH_SIZE, shuffle=True, num_workers=NUM_WORKERS)
+    pretext_loader = DataLoader(pretext_data(PRETEXT_FILE), batch_size=BATCH_SIZE, shuffle=True)
 
-    test_records = [np.load(f) for f in TEST_FILE]
-    test_subjects = dict()
-
-    for i, rec in enumerate(test_records):
-        if rec['_description'][0] not in test_subjects.keys():
-            test_subjects[rec['_description'][0]] = [rec]
-        else:
-            test_subjects[rec['_description'][0]].append(rec)
-
-    test_subjects = list(test_subjects.values())
+    test_subjects = [np.load(f) for f in TEST_FILE]
 
 
     ##############################################################################################################################
 
 
     wb = wandb.init(
-            project="EPF-ME",
-            notes="multi-epoch, symmetric loss, using same projection heads and no batch norm",
+            project="EPF-Multi-Epoch-shhs",
+            notes="single-epoch, symmetric loss, 1000 samples, using same projection heads and no batch norm, original simclr",
             save_code=True,
             entity="sleep-staging",
-            name="random, amp, T=1, L=7",
+            name="multi-epoch-shhs-7"
         )
-    wb.save('multi/me_main/*.py')
+    wb.save('multi/me_main_shhs/*.py')
     wb.watch([q_encoder],log='all',log_freq=500)
 
     Pretext(q_encoder, optimizer, n_epochs, criterion, pretext_loader, test_subjects, wb, device, SAVE_PATH, BATCH_SIZE)

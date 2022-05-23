@@ -1,7 +1,7 @@
 from augmentations import *
 from loss import loss_fn
 from model import sleep_model
-from train_ga import *
+from train import *
 from utils import *
 
 from braindecode.util import set_random_seeds
@@ -15,15 +15,16 @@ from torch.utils.data import DataLoader, Dataset
 
 def main():
     
-    PATH = '/scratch/sleepkfold_pos_10/'
+    PATH = '/scratch/shhs_7/'
+    SLEEPEDF_PATH = '/scratch/sleepedf_7/'
 
     # Params
-    SAVE_PATH = "multi-epoch-xx.pth"
+    SAVE_PATH = "me-shhs-7.pth"
     WEIGHT_DECAY = 1e-4
-    BATCH_SIZE = 128
+    BATCH_SIZE = 128 
     lr = 5e-4
-    n_epochs = 200
-    NUM_WORKERS = 5
+    n_epochs = 400
+    NUM_WORKERS = 6
     N_DIM = 256
     TEMPERATURE = 1
 
@@ -52,14 +53,13 @@ def main():
     q_encoder = model.to(device)
 
     optimizer = torch.optim.Adam(q_encoder.parameters(), lr=lr, weight_decay=WEIGHT_DECAY)
-    criterion = loss_fn(device,T=TEMPERATURE).to(device)
+    criterion = loss_fn(device, T=TEMPERATURE).to(device)
 
     #####################################################################################################
 
     class pretext_data(Dataset):
 
-        def __init__(self, filepath):
-            
+        def __init__(self, filepath):       
             self.file_path = filepath
             self.idx = np.array(range(len(self.file_path)))
 
@@ -70,21 +70,21 @@ def main():
             
             path = self.file_path[index]
             data = np.load(path)
-            pos = data['pos'][:, :1, :] #(7, 2, 3000)
-            anc = data['neg'][:, :1, :]
+            pos = data['pos'] # (7, 1, 3000)
+            anc = copy.deepcopy(pos)
             
             # augment
             for i in range(pos.shape[0]):
                 pos[i] = augment(pos[i])
                 anc[i] = augment(anc[i])
             return anc, pos
-        
+      
 
     PRETEXT_FILE = os.listdir(os.path.join(PATH, "pretext"))
     PRETEXT_FILE.sort(key=natural_keys)
     PRETEXT_FILE = [os.path.join(PATH, "pretext", f) for f in PRETEXT_FILE]
 
-    TEST_FILE = os.listdir(os.path.join(PATH, "test"))
+    TEST_FILE = os.listdir(os.path.join(SLEEPEDF_PATH, "test"))
     TEST_FILE.sort(key=natural_keys)
     TEST_FILE = [os.path.join(PATH, "test", f) for f in TEST_FILE]
 
@@ -109,13 +109,13 @@ def main():
 
 
     wb = wandb.init(
-            project="EPF-Multi-Epoch",
-            notes="single-epoch, symmetric loss, 1000 samples, using same projection heads and no batch norm, original simclr",
+            project="EPF-V2",
+            notes="multi-epoch, symmetric loss, using same projection heads and no batch norm",
             save_code=True,
             entity="sleep-staging",
-            name="multi-epoch-sym-pos, w/ anc, pos=10, T=1",
+            name="me-shhs-7, transfer, new aug",
         )
-    wb.save('multi/multi_epoch_sym/*.py')
+    wb.save('multi/me_transfer/*.py')
     wb.watch([q_encoder],log='all',log_freq=500)
 
     Pretext(q_encoder, optimizer, n_epochs, criterion, pretext_loader, test_subjects, wb, device, SAVE_PATH, BATCH_SIZE)
@@ -124,4 +124,6 @@ def main():
 
 
 if __name__ == "__main__":
+    
+    os.environ['CUDA_LAUNCH_BLOCKING'] = "1"
     main()

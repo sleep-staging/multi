@@ -39,7 +39,7 @@ def evaluate(q_encoder, train_loader, test_loader, device, i):
             X_val = X_val.float()
             y_val = y_val.long()
             X_val = X_val.to(device)
-            emb_val.extend(q_encoder(X_val[:, :1, :], proj='mid').cpu().tolist())
+            emb_val.extend(q_encoder(X_val, proj="mid").cpu().tolist())
             gt_val.extend(y_val.numpy().flatten())
     emb_val, gt_val = np.array(emb_val), np.array(gt_val)
 
@@ -50,7 +50,7 @@ def evaluate(q_encoder, train_loader, test_loader, device, i):
             X_test = X_test.float()
             y_test = y_test.long()
             X_test = X_test.to(device)
-            emb_test.extend(q_encoder(X_test[:, :1, :], proj="mid").cpu().tolist())
+            emb_test.extend(q_encoder(X_test, proj="mid").cpu().tolist())
             gt_test.extend(y_test.numpy().flatten())
 
     emb_test, gt_test = np.array(emb_test), np.array(gt_test)
@@ -93,7 +93,7 @@ def task(X_train, X_test, y_train, y_test, i):
     
     pit = time.time() - start
     print(f"Took {int(pit // 60)} min:{int(pit % 60)} secs for {i} fold")
-    
+
     return acc, cm, f1, kappa, bal_acc, y_test, pred
 
 def kfold_evaluate(q_encoder, test_subjects, device, BATCH_SIZE):
@@ -102,13 +102,11 @@ def kfold_evaluate(q_encoder, test_subjects, device, BATCH_SIZE):
 
     total_acc, total_f1, total_kappa, total_bal_acc = [], [], [], []
     i = 1
-
+    
     for train_idx, test_idx in kfold.split(test_subjects):
 
         test_subjects_train = [test_subjects[i] for i in train_idx]
         test_subjects_test = [test_subjects[i] for i in test_idx]
-        test_subjects_train = [rec for sub in test_subjects_train for rec in sub]
-        test_subjects_test = [rec for sub in test_subjects_test for rec in sub]
 
         train_loader = DataLoader(TuneDataset(test_subjects_train), batch_size=BATCH_SIZE*2, shuffle=True)
         test_loader = DataLoader(TuneDataset(test_subjects_test), batch_size=BATCH_SIZE*2, shuffle= False)
@@ -149,7 +147,7 @@ class TuneDataset(Dataset):
         self.X = []
         self.y = []
         for subject in self.subjects:
-            self.X.append(subject['windows'])
+            self.X.append(np.expand_dims(subject['x'][:, 0], axis=1))
             self.y.append(subject['y'])
         self.X = np.concatenate(self.X, axis=0)
         self.y = np.concatenate(self.y, axis=0)
@@ -186,7 +184,7 @@ def Pretext(
     for epoch in range(Epoch):
         
         pretext_loss = []        
-       
+        
         print('=========================================================================================================================\n')
         print("Epoch: {}".format(epoch))
         print('=========================================================================================================================\n')
@@ -198,7 +196,7 @@ def Pretext(
             
             anc = anc.float()
             pos = pos.float()
-        
+
             anc, pos = (
                 anc.to(device),
                 pos.to(device)
@@ -228,21 +226,18 @@ def Pretext(
             scaler.scale(loss).backward()
             scaler.step(optimizer)
             scaler.update()
-                
+           
             all_loss.append(loss.detach().cpu().item())
             pretext_loss.append(loss.detach().cpu().item())
 
-            N = 1000
-            if (step + 1) % N == 0:
-                scheduler.step(sum(all_loss[-50:]))
-                lr = optimizer.param_groups[0]["lr"]
-                wandb.log({"ssl_lr": lr, "Epoch": epoch})
-            step += 1
+        scheduler.step(sum(all_loss[-50:]))
+        lr = optimizer.param_groups[0]["lr"]
+        wandb.log({"ssl_lr": lr, "Epoch": epoch})
 
         wandb.log({"ssl_loss": np.mean(pretext_loss), "Epoch": epoch})
 
-        if epoch >= 10 and (epoch) % 5 == 0:
-
+        if epoch >=20 and (epoch) % 5 == 0:
+            
             test_acc, test_f1, test_kappa, bal_acc = kfold_evaluate(
                 q_encoder, test_subjects, device, BATCH_SIZE
             )

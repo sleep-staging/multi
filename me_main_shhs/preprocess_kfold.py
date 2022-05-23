@@ -15,16 +15,15 @@ from torch.utils.data import DataLoader
 from torch.utils.data.sampler import Sampler
 from sklearn.utils import check_random_state
 
-PATH = '/scratch/allsamples_3/'
+PATH = '/scratch/shhs_7/'
 DATA_PATH = '/scratch/'
 os.makedirs(PATH, exist_ok=True)
 
 # Params
 BATCH_SIZE = 1
-POS_MIN = 1
+POS_MIN = 2
 NEG_MIN = 15
-EPOCH_LEN = 3
-NUM_SAMPLES = 500
+EPOCH_LEN = 7
 SUBJECTS = np.arange(83)
 RECORDINGS = [1, 2]
 
@@ -35,11 +34,8 @@ random_state = 1234
 n_jobs = 1
 sfreq = 100
 high_cut_hz = 30
-
 window_size_s = 30
-sfreq = 100
 window_size_samples = window_size_s * sfreq
-
 
 
 class SleepPhysionet(BaseConcatDataset):
