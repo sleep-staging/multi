@@ -162,8 +162,6 @@ class TuneDataset(Dataset):
 # Pretrain
 def Pretext(
     q_encoder,
-    k_encoder,
-    m,
     optimizer,
     Epoch,
     criterion,
@@ -205,40 +203,45 @@ def Pretext(
                 anc.to(device),
                 pos.to(device)
             )  # (B, 7, 1, 3000)  (B, 7, 1, 3000) 
-
-         
+            
+            num_len = anc.shape[1]
+            sel1 = np.random.choice(num_len)
+            sel2 = np.random.choice(num_len)
+            
+            # backprop
+            optimizer.zero_grad()
+            
             with torch.cuda.amp.autocast():
-                num_len = anc.shape[1]
-                sel1 = np.random.choice(num_len)
-                sel2 = np.random.choice(num_len)   
-                
-                anc_features = []
                 pos_features = []
-                
+
+                anc_features = q_encoder(anc[:, sel1], proj='top') #(B, 128)
                 for i in range(num_len):
-                    anc_features.append(k_encoder(anc[:, i], proj='top')) #(B, 128)
-                    pos_features.append(k_encoder(pos[:, i], proj='top'))  # (B, 128)
+                    pos_features.append(q_encoder(pos[:, i], proj='top'))  # (B, 128) 
+
+                pos_features = torch.stack(pos_features, dim=1)  # (B, 7, 128)
+                loss1 = criterion(anc_features, pos_features) 
+                
+            
+            scaler.scale(loss1).backward()
+
+            with torch.cuda.amp.autocast():
+                anc_features = []
+                pos_features = q_encoder(pos[:, sel2], proj='top') #(B, 128)
+                for i in range(num_len):
+                    anc_features.append(q_encoder(anc[:, i], proj='top'))  # (B, 128) 
 
                 anc_features = torch.stack(anc_features, dim=1)  # (B, 7, 128)
-                pos_features = torch.stack(pos_features, dim=1)  # (B, 7, 128)
-
-                loss1 = criterion(q_encoder(anc[:, sel1], proj='top'), pos_features)
-                loss2 = criterion(q_encoder(pos[:, sel2], proj='top'), anc_features)
+                loss2 = criterion(pos_features,anc_features)
                     
-                loss = (loss1 + loss2)
-                
-            optimizer.zero_grad()
-            scaler.scale(loss).backward()
+             # backprop
+            scaler.scale(loss2).backward()
+            
             scaler.step(optimizer)
             scaler.update()
                 
-            all_loss.append(loss.detach().cpu().item())
-            pretext_loss.append(loss.detach().cpu().item())
-            
-            # exponential moving average (EMA)
-            for param_q, param_k in zip(q_encoder.parameters(), k_encoder.parameters()):
-                param_k.data = param_k.data * m + param_q.data * (1. - m) 
-
+            all_loss.append(loss1.detach().cpu().item() + loss2.detach().cpu().item())
+            pretext_loss.append(loss1.detach().cpu().item() + loss2.detach().cpu().item())
+    
             N = 1000
             if (step + 1) % N == 0:
                 scheduler.step(sum(all_loss[-50:]))
