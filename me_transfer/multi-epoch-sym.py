@@ -15,11 +15,11 @@ from torch.utils.data import DataLoader, Dataset
 
 def main():
     
-    PATH = '/scratch/shhs_7/'
-    SLEEPEDF_PATH = '/scratch/sleepedf_7/'
+    PATH = '/scratch/shhs_3'
+    SLEEPEDF_PATH = '/scratch/sleepedf_7'
 
     # Params
-    SAVE_PATH = "me-shhs-7.pth"
+    SAVE_PATH = "me-shhs-3.pth"
     WEIGHT_DECAY = 1e-4
     BATCH_SIZE = 128 
     lr = 5e-4
@@ -70,7 +70,7 @@ def main():
             
             path = self.file_path[index]
             data = np.load(path)
-            pos = data['pos'] # (7, 1, 3000)
+            pos = data['pos'][:, :1, :] # (7, 1, 3000)
             anc = copy.deepcopy(pos)
             
             # augment
@@ -86,7 +86,7 @@ def main():
 
     TEST_FILE = os.listdir(os.path.join(SLEEPEDF_PATH, "test"))
     TEST_FILE.sort(key=natural_keys)
-    TEST_FILE = [os.path.join(PATH, "test", f) for f in TEST_FILE]
+    TEST_FILE = [os.path.join(SLEEPEDF_PATH, "test", f) for f in TEST_FILE]
 
     print(f'Number of pretext files: {len(PRETEXT_FILE)}')
     print(f'Number of test records: {len(TEST_FILE)}')
@@ -113,7 +113,7 @@ def main():
             notes="multi-epoch, symmetric loss, using same projection heads and no batch norm",
             save_code=True,
             entity="sleep-staging",
-            name="me-shhs-7, transfer, new aug",
+            name="me-shhs-3, transfer, new aug",
         )
     wb.save('multi/me_transfer/*.py')
     wb.watch([q_encoder],log='all',log_freq=500)

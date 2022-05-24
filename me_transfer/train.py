@@ -238,7 +238,7 @@ def Pretext(
 
         wandb.log({"ssl_loss": np.mean(pretext_loss), "Epoch": epoch})
 
-        if epoch >=20 and (epoch) % 5 == 0:
+        if epoch >= 0 and (epoch) % 5 == 0:
             
             test_acc, test_f1, test_kappa, bal_acc = kfold_evaluate(
                 q_encoder, test_subjects, device, BATCH_SIZE
